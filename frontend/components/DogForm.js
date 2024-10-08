@@ -1,24 +1,62 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react';
 
-const initialForm = { name: '', breed: '', adopted: false }
+// Initial form state
+const initialForm = { name: '', breed: '', adopted: false };
 
-// Use this form for both POST and PUT requests!
-export default function DogForm() {
-  const [values, setValues] = useState(initialForm)
-  const onSubmit = (event) => {
-    event.preventDefault()
-  }
+export default function DogForm({ dogToEdit }) {
+  const [values, setValues] = useState(initialForm);
+  const [breeds, setBreeds] = useState([]);
+
+  // Fetch breeds for dropdown
+  const fetchBreeds = async () => {
+    const response = await fetch('http://localhost:3003/api/dogs/breeds');
+    const data = await response.json();
+    setBreeds(data);
+  };
+
+  const fetchDog = async (id) => {
+    const response = await fetch(`http://localhost:3003/api/dogs/${id}`);
+    const data = await response.json();
+    setValues(data);
+  };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    if (dogToEdit) {
+      // PUT request if editing an existing dog
+      await fetch(`http://localhost:3003/api/dogs/${dogToEdit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+    } else {
+      // POST request for new dog
+      await fetch('http://localhost:3003/api/dogs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+    }
+    // Reset form after submission (you can handle this differently as needed)
+    setValues(initialForm);
+  };
+
   const onChange = (event) => {
-    const { name, value, type, checked } = event.target
+    const { name, value, type, checked } = event.target;
     setValues({
-      ...values, [name]: type === 'checkbox' ? checked : value
-    })
-  }
+      ...values,
+      [name]: type === 'checkbox' ? checked : value,
+    });
+  };
+
+  useEffect(() => {
+    fetchBreeds();
+    if (dogToEdit) fetchDog(dogToEdit.id);
+  }, [dogToEdit]);
+
   return (
     <div>
-      <h2>
-        Create Dog
-      </h2>
+      <h2>{dogToEdit ? 'Edit Dog' : 'Create Dog'}</h2>
       <form onSubmit={onSubmit}>
         <input
           name="name"
@@ -34,7 +72,9 @@ export default function DogForm() {
           aria-label="Dog's breed"
         >
           <option value="">---Select Breed---</option>
-          {/* Populate this dropdown using data obtained from the API */}
+          {breeds.map(breed => (
+            <option key={breed} value={breed}>{breed}</option>
+          ))}
         </select>
         <label>
           Adopted: <input
@@ -47,11 +87,11 @@ export default function DogForm() {
         </label>
         <div>
           <button type="submit">
-            Create Dog
+            {dogToEdit ? 'Update Dog' : 'Create Dog'}
           </button>
-          <button aria-label="Reset form">Reset</button>
+          <button type="button" onClick={() => setValues(initialForm)} aria-label="Reset form">Reset</button>
         </div>
       </form>
     </div>
-  )
+  );
 }
